@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ openAddModal: false, editGame: null, deleteGame: null, showDescription: null }">
+<html lang="en" x-data="{ openAddModal: false, editGame: null, deleteGame: null, showDescription: null, sidebarOpen: false }">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +7,59 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Smooth sidebar transitions */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* Mobile overlay for sidebar */
+        @media (max-width: 768px) {
+            .sidebar-overlay {
+                display: none;
+            }
+            .sidebar-open .sidebar-overlay {
+                display: block;
+            }
+        }
+        
+        /* Table horizontal scrolling only */
+        .table-scroll-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Ensure table has minimum width for content */
+        .table-content {
+            min-width: 800px;
+        }
+    </style>
 </head>
-<body class="bg-[#0d1117] text-white font-sans min-h-screen flex">
+<body class="bg-[#0d1117] text-white font-sans min-h-screen flex" 
+      :class="{ 'sidebar-open': sidebarOpen, 'overflow-hidden md:overflow-auto': sidebarOpen }">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" 
+         x-show="sidebarOpen" 
+         @click="sidebarOpen = false"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+    </div>
 
     <!-- Sidebar -->
-    <aside class="bg-[#161b22] w-64 h-screen fixed top-0 left-0 p-6 flex flex-col">
-        <h3 class="text-[#58a6ff] text-2xl font-bold mb-8">Game Manager</h3>
+    <aside class="bg-[#161b22] w-64 h-screen fixed top-0 left-0 p-6 flex flex-col z-50 sidebar-transition"
+           :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
+        <div class="flex items-center justify-between mb-8">
+            <img src="{{ asset('storage/logo.png') }}" alt="Game Manager Logo" class="w-16 h-16 rounded-xl">
+            <!-- Close button for mobile -->
+            <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
         <nav class="flex-1">
             <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-md hover:bg-[#21262d] hover:text-[#58a6ff]">
                 <i class="fas fa-home"></i> Dashboard
@@ -33,8 +80,30 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64 p-6">
+    <main class="flex-1 md:ml-64 p-4 md:p-6">
         <div class="max-w-7xl mx-auto">
+
+            <!-- Mobile Header with Menu Button -->
+            <div class="flex items-center gap-4 mb-6 md:hidden">
+                <button @click="sidebarOpen = true" class="p-2 rounded-md bg-[#161b22] hover:bg-[#21262d]">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-bold">Games</h1>
+                    <p class="text-gray-400 text-sm">Manage your game collection</p>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="hidden md:flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold">Games</h1>
+                    <p class="text-gray-400 mt-1">Manage your game collection</p>
+                </div>
+                <button @click="openAddModal = true" class="bg-[#238636] hover:bg-[#2ea043] px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-green-600/40">
+                    <span class="text-lg">+</span> Add Game
+                </button>
+            </div>
 
             <!-- Flash Messages -->
             @if(session('success'))
@@ -66,88 +135,81 @@
                 </div>
             </div>
             @endif
-
-            <!-- Header -->
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-3xl font-bold">Games</h1>
-                    <p class="text-gray-400 mt-1">Manage your game collection</p>
-                </div>
-                <button @click="openAddModal = true" class="bg-[#238636] hover:bg-[#2ea043] px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-green-600/40">
-                    <span class="text-lg">+</span> Add Game
-                </button>
-            </div>
     
-            <!-- Table Container -->
-            <div class="bg-[#161b22] rounded-xl border border-[#1e232a] overflow-x-auto">
-                <!-- Table Header -->
-                <div class="grid grid-cols-6 px-6 py-3 text-gray-400 text-sm tracking-wide rounded-t-lg">
-                    <div>Game Name</div>
-                    <div>Publisher</div>
-                    <div>Platform</div>
-                    <div>Availability</div>
-                    <div>Description</div>
-                    <div class="text-right">Actions</div>
-                </div>
-    
-                <!-- Table Body -->
-                <div class="bg-[#1e232a] rounded-b-lg">
-                    @foreach($games as $game)
-                    <div class="grid grid-cols-6 items-center px-6 py-4 border-b border-[#0f131a] last:border-none">
-                        <div class="text-white font-medium">{{ $game->Game_name }}</div>
-                        <div class="text-gray-300">{{ $game->Publisher }}</div>
-                        <div class="text-gray-300">{{ $game->platform->Platform_name }}</div>
-                        <div>
-                            @if($game->Availability === 'Available')
-                            <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">Available</span>
-                            @elseif($game->Availability === 'Coming Soon')
-                            <span class="px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">Coming Soon</span>
-                            @else
-                            <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full">Unavailable</span>
-                            @endif
+            <!-- Table Container - Only this section scrolls horizontally -->
+            <div class="bg-[#161b22] rounded-xl border border-[#1e232a]">
+                <div class="table-scroll-container">
+                    <div class="table-content">
+                        <!-- Table Header -->
+                        <div class="grid grid-cols-6 px-4 md:px-6 py-3 text-gray-400 text-sm tracking-wide rounded-t-lg">
+                            <div class="px-2">Game Name</div>
+                            <div class="px-2">Publisher</div>
+                            <div class="px-2">Platform</div>
+                            <div class="px-2">Availability</div>
+                            <div class="px-2">Description</div>
+                            <div class="px-2 text-right">Actions</div>
                         </div>
-                        <div>
-                            <button 
-                                @click="showDescription = { 
-                                    name: '{{ $game->Game_name }}', 
-                                    description: `{{ $game->Description }}`
-                                }" 
-                                class="text-[#58a6ff] hover:text-[#79c0ff] text-sm font-medium underline">
-                                Read Description
-                            </button>
-                        </div>
-                        <div class="flex justify-end gap-3">
-                            <!-- Edit Button -->
-                            <button 
-                                @click="editGame = { 
-                                    id: {{ $game->id }}, 
-                                    name: '{{ $game->Game_name }}', 
-                                    publisher: '{{ $game->Publisher }}', 
-                                    platform_id: {{ $game->platform_id }},
-                                    availability: '{{ $game->Availability }}',
-                                    description: `{{ $game->Description }}`
-                                }" 
-                                class="p-2 bg-[#0f131a] hover:bg-[#1a1f26] rounded-md">
-                                <i class="fas fa-pen text-blue-500"></i>
-                            </button>
-    
-                            <!-- Delete Button -->
-                            <button 
-                                @click="deleteGame = { id: {{ $game->id }}, name: '{{ $game->Game_name }}' }" 
-                                class="p-2 bg-[#0f131a] hover:bg-[#1a1f26] rounded-md">
-                                <i class="fas fa-trash text-red-500"></i>
-                            </button>
+            
+                        <!-- Table Body -->
+                        <div class="bg-[#1e232a] rounded-b-lg">
+                            @foreach($games as $game)
+                            <div class="grid grid-cols-6 items-center px-4 md:px-6 py-4 border-b border-[#0f131a] last:border-none">
+                                <div class="text-white font-medium">{{ $game->Game_name }}</div>
+                                <div class="text-gray-300">{{ $game->Publisher }}</div>
+                                <div class="text-gray-300">{{ $game->platform->Platform_name }}</div>
+                                <div>
+                                    @if($game->Availability === 'Available')
+                                    <span class="px-2 py-1 bg-green-600 text-white text-xs rounded-full">Available</span>
+                                    @elseif($game->Availability === 'Coming Soon')
+                                    <span class="px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">Coming Soon</span>
+                                    @else
+                                    <span class="px-2 py-1 bg-red-600 text-white text-xs rounded-full">Unavailable</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <button 
+                                        @click="showDescription = { 
+                                            name: '{{ $game->Game_name }}', 
+                                            description: `{{ $game->Description }}`
+                                        }" 
+                                        class="text-[#58a6ff] hover:text-[#79c0ff] text-sm font-medium underline">
+                                        Read Description
+                                    </button>
+                                </div>
+                                <div class="flex justify-end gap-3">
+                                    <!-- Edit Button -->
+                                    <button 
+                                        @click="editGame = { 
+                                            id: {{ $game->id }}, 
+                                            name: '{{ $game->Game_name }}', 
+                                            publisher: '{{ $game->Publisher }}', 
+                                            platform_id: {{ $game->platform_id }},
+                                            availability: '{{ $game->Availability }}',
+                                            description: `{{ $game->Description }}`
+                                        }" 
+                                        class="p-2 bg-[#0f131a] hover:bg-[#1a1f26] rounded-md">
+                                        <i class="fas fa-pen text-blue-500"></i>
+                                    </button>
+            
+                                    <!-- Delete Button -->
+                                    <button 
+                                        @click="deleteGame = { id: {{ $game->id }}, name: '{{ $game->Game_name }}' }" 
+                                        class="p-2 bg-[#0f131a] hover:bg-[#1a1f26] rounded-md">
+                                        <i class="fas fa-trash text-red-500"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
                     </div>
-                    @endforeach
                 </div>
             </div>
         </div>
     </main>
 
     <!-- Add Game Modal -->
-    <div x-show="openAddModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="openAddModal = false">
+    <div x-show="openAddModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="openAddModal = false">
             <h2 class="text-xl font-bold mb-4">Add Game</h2>
             <form action="/games" method="POST">
                 @csrf
@@ -194,8 +256,8 @@
     </div>
 
     <!-- Edit Game Modal -->
-    <div x-show="editGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="editGame = null">
+    <div x-show="editGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="editGame = null">
             <h2 class="text-xl font-bold mb-4">Edit Game</h2>
             <form :action="`/games/${editGame?.id}`" method="POST">
                 @csrf
@@ -242,8 +304,8 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div x-show="deleteGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="deleteGame = null">
+    <div x-show="deleteGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="deleteGame = null">
             <div class="text-center mb-4">
                 <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-exclamation text-white text-xl"></i>
@@ -267,8 +329,8 @@
     </div>
 
     <!-- Description Popup Modal -->
-    <div x-show="showDescription" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-2/5 p-6 relative" @click.away="showDescription = null">
+    <div x-show="showDescription" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-2xl p-6 relative" @click.away="showDescription = null">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-white" x-text="showDescription?.name + ' - Description'"></h2>
                 <button @click="showDescription = null" class="text-gray-400 hover:text-white">

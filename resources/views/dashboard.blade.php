@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ openAddModal: false, editGame: null, deleteGame: null, showDescription: null, currentPage: 1, totalPages: {{ ceil($games->count() / 5) }}, loading: false }">
+<html lang="en" x-data="{ openAddModal: false, editGame: null, deleteGame: null, showDescription: null, currentPage: 1, totalPages: {{ ceil($games->count() / 5) }}, loading: false, sidebarOpen: false }">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +7,55 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Smooth sidebar transitions */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* Mobile overlay for sidebar */
+        @media (max-width: 768px) {
+            .sidebar-overlay {
+                display: none;
+            }
+            .sidebar-open .sidebar-overlay {
+                display: block;
+            }
+        }
+        
+        /* Ensure table horizontal scrolling */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
 </head>
-<body class="bg-[#0d1117] text-white font-sans min-h-screen flex" x-data="dashboard()">
+<body class="bg-[#0d1117] text-white font-sans min-h-screen flex" 
+      x-data="dashboard()" 
+      :class="{ 'sidebar-open': sidebarOpen, 'overflow-hidden md:overflow-auto': sidebarOpen }">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" 
+         x-show="sidebarOpen" 
+         @click="sidebarOpen = false"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+    </div>
 
     <!-- Sidebar -->
-    <aside class="bg-[#161b22] w-64 h-screen fixed top-0 left-0 p-6 flex flex-col">
-        <h3 class="text-[#58a6ff] text-2xl font-bold mb-8">Game Manager</h3>
+    <aside class="bg-[#161b22] w-64 h-screen fixed top-0 left-0 p-6 flex flex-col z-50 sidebar-transition"
+           :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
+           <div class="flex items-center justify-center mb-8">
+            <img src="{{ asset('storage/logo.png') }}" alt="Game Manager Logo" class="w-16 h-16 rounded-xl">
+            <!-- Close button for mobile -->
+            <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
         <nav class="flex-1">
             <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-md bg-[#21262d] text-[#58a6ff]">
                 <i class="fas fa-home"></i> Dashboard
@@ -33,8 +76,29 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64 p-6">
+    <main class="flex-1 md:ml-64 p-4 md:p-6">
         <div class="max-w-7xl mx-auto">
+            <!-- Mobile Header with Menu Button -->
+            <div class="flex items-center gap-4 mb-6 md:hidden">
+                <button @click="sidebarOpen = true" class="p-2 rounded-md bg-[#161b22] hover:bg-[#21262d]">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-bold">Dashboard</h1>
+                    <p class="text-gray-400 text-sm">Overview of your game collection</p>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="hidden md:flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold">Dashboard</h1>
+                    <p class="text-gray-400 mt-1">Overview of your game collection</p>
+                </div>
+                <button @click="openAddModal = true" class="bg-[#238636] hover:bg-[#2ea043] px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-green-600/40">
+                    <span class="text-lg">+</span> Add Game
+                </button>
+            </div>
 
             <!-- Flash Messages -->
             @if(session('success'))
@@ -67,28 +131,17 @@
             </div>
             @endif
 
-            <!-- Header -->
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-3xl font-bold">Dashboard</h1>
-                    <p class="text-gray-400 mt-1">Overview of your game collection</p>
-                </div>
-                <button @click="openAddModal = true" class="bg-[#238636] hover:bg-[#2ea043] px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-green-600/40">
-                    <span class="text-lg">+</span> Add Game
-                </button>
-            </div>
-
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
                 <!-- Total Games Card -->
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-gray-400 text-sm">Total Games</p>
-                            <h3 class="text-2xl font-bold text-white mt-1">{{ $totalGames }}</h3>
+                            <h3 class="text-xl md:text-2xl font-bold text-white mt-1">{{ $totalGames }}</h3>
                         </div>
-                        <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-gamepad text-white text-xl"></i>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-gamepad text-white text-lg md:text-xl"></i>
                         </div>
                     </div>
                     <div class="mt-4 pt-4 border-t border-[#1e232a]">
@@ -100,14 +153,14 @@
                 </div>
 
                 <!-- Total Platforms Card -->
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-gray-400 text-sm">Platforms</p>
-                            <h3 class="text-2xl font-bold text-white mt-1">{{ $totalPlatforms }}</h3>
+                            <h3 class="text-xl md:text-2xl font-bold text-white mt-1">{{ $totalPlatforms }}</h3>
                         </div>
-                        <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-layer-group text-white text-xl"></i>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-layer-group text-white text-lg md:text-xl"></i>
                         </div>
                     </div>
                     <div class="mt-4 pt-4 border-t border-[#1e232a]">
@@ -119,14 +172,14 @@
                 </div>
 
                 <!-- Available Games Card -->
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-gray-400 text-sm">Available</p>
-                            <h3 class="text-2xl font-bold text-white mt-1">{{ $availableGames }}</h3>
+                            <h3 class="text-xl md:text-2xl font-bold text-white mt-1">{{ $availableGames }}</h3>
                         </div>
-                        <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-check-circle text-white text-xl"></i>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-check-circle text-white text-lg md:text-xl"></i>
                         </div>
                     </div>
                     <div class="mt-4 pt-4 border-t border-[#1e232a]">
@@ -138,14 +191,14 @@
                 </div>
 
                 <!-- Coming Soon Card -->
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-gray-400 text-sm">Coming Soon</p>
-                            <h3 class="text-2xl font-bold text-white mt-1">{{ $comingSoon }}</h3>
+                            <h3 class="text-xl md:text-2xl font-bold text-white mt-1">{{ $comingSoon }}</h3>
                         </div>
-                        <div class="w-12 h-12 bg-yellow-600 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-clock text-white text-xl"></i>
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-yellow-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-white text-lg md:text-xl"></i>
                         </div>
                     </div>
                     <div class="mt-4 pt-4 border-t border-[#1e232a]">
@@ -158,20 +211,23 @@
             </div>
 
             <!-- Recent Games Table -->
-            <div class="bg-[#161b22] rounded-xl border border-[#1e232a] overflow-x-auto">
-                <!-- Table Header -->
-                <div class="grid grid-cols-6 px-6 py-3 text-gray-400 text-sm tracking-wide rounded-t-lg">
-                    <div>Game Name</div>
-                    <div>Publisher</div>
-                    <div>Platform</div>
-                    <div>Description</div>
-                    <div>Availability</div>
-                    <div class="text-right">Actions</div>
-                </div>
-    
-                <!-- Table Body -->
-                <div id="gamesTableBody" class="bg-[#1e232a] rounded-b-lg" @click="handleTableClick($event)">
-                    @include('partials.games-table', ['games' => $games->take(5)])
+            <div class="bg-[#161b22] rounded-xl border border-[#1e232a]">
+                <!-- Table Container for Horizontal Scrolling -->
+                <div class="table-container">
+                    <!-- Table Header -->
+                    <div class="grid grid-cols-6 px-4 md:px-6 py-3 text-gray-400 text-sm tracking-wide rounded-t-lg min-w-[800px]">
+                        <div class="px-2">Game Name</div>
+                        <div class="px-2">Publisher</div>
+                        <div class="px-2">Platform</div>
+                        <div class="px-2">Description</div>
+                        <div class="px-2">Availability</div>
+                        <div class="px-2 text-right">Actions</div>
+                    </div>
+        
+                    <!-- Table Body -->
+                    <div id="gamesTableBody" class="bg-[#1e232a] rounded-b-lg min-w-[800px]" @click="handleTableClick($event)">
+                        @include('partials.games-table', ['games' => $games->take(5)])
+                    </div>
                 </div>
 
                 <!-- Loading Spinner -->
@@ -180,8 +236,8 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="flex justify-between items-center px-6 py-4 border-t border-[#0f131a]">
-                    <div class="text-gray-400 text-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-center px-4 md:px-6 py-4 border-t border-[#0f131a] gap-4">
+                    <div class="text-gray-400 text-sm text-center sm:text-left">
                         Showing <span x-text="(currentPage - 1) * 5 + 1"></span> to <span x-text="Math.min(currentPage * 5, {{ $games->count() }})"></span> of {{ $games->count() }} results
                     </div>
                     
@@ -218,8 +274,8 @@
             </div>
 
             <!-- Quick Actions -->
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <h3 class="text-lg font-semibold mb-4 text-[#58a6ff]">Quick Actions</h3>
                     <div class="space-y-3">
                         <button @click="openAddModal = true" class="w-full flex items-center gap-3 p-3 rounded-md bg-[#0f131a] hover:bg-[#1a1f26] text-gray-300 hover:text-white transition-colors">
@@ -237,7 +293,7 @@
                     </div>
                 </div>
 
-                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-6">
+                <div class="bg-[#161b22] rounded-xl border border-[#1e232a] p-4 md:p-6">
                     <h3 class="text-lg font-semibold mb-4 text-[#58a6ff]">Collection Stats</h3>
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
@@ -277,8 +333,8 @@
     </main>
 
     <!-- Add Game Modal -->
-    <div x-show="openAddModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="openAddModal = false">
+    <div x-show="openAddModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="openAddModal = false">
             <h2 class="text-xl font-bold mb-4">Add Game</h2>
             <form action="/games" method="POST" @submit="openAddModal = false">
                 @csrf
@@ -325,10 +381,10 @@
     </div>
 
     <!-- Edit Game Modal -->
-    <div x-show="editGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="editGame = null">
+    <div x-show="editGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="editGame = null">
             <h2 class="text-xl font-bold mb-4">Edit Game</h2>
-            <form :action="`/games/${editGame?.id}`" method="POST" @submit="editGame = null">
+            <form :action="`/games/${editGame?.id}`" method="POST">
                 @csrf
                 @method('PUT')
                 <div class="mb-4">
@@ -373,8 +429,8 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div x-show="deleteGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-96 p-6 relative" @click.away="deleteGame = null">
+    <div x-show="deleteGame" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-md p-6 relative" @click.away="deleteGame = null">
             <div class="text-center mb-4">
                 <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
                     <i class="fas fa-exclamation text-white text-xl"></i>
@@ -386,7 +442,7 @@
             
             <div class="flex justify-end gap-3">
                 <button type="button" @click="deleteGame = null" class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-700">Cancel</button>
-                <form :action="`/games/${deleteGame?.id}`" method="POST" @submit="deleteGame = null">
+                <form :action="`/games/${deleteGame?.id}`" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold">
@@ -398,8 +454,8 @@
     </div>
 
     <!-- Description Popup Modal -->
-    <div x-show="showDescription" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" x-transition>
-        <div class="bg-[#161b22] rounded-xl shadow-lg w-2/5 p-6 relative" @click.away="showDescription = null">
+    <div x-show="showDescription" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" x-transition>
+        <div class="bg-[#161b22] rounded-xl shadow-lg w-full max-w-2xl p-6 relative" @click.away="showDescription = null">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-white" x-text="showDescription?.name + ' - Description'"></h2>
                 <button @click="showDescription = null" class="text-gray-400 hover:text-white">
@@ -427,6 +483,7 @@
                 currentPage: 1,
                 totalPages: {{ ceil($games->count() / 5) }},
                 loading: false,
+                sidebarOpen: false,
 
                 handleTableClick(event) {
                     const button = event.target.closest('button');

@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Game Routes
     Route::get('/games', [GameController::class, 'index'])->name('games.index');
     Route::post('/games', [GameController::class, 'store'])->name('games.store');
+    Route::get('/games/{game}/edit', [GameController::class, 'edit'])->name('games.edit');
     Route::put('/games/{game}', [GameController::class, 'update'])->name('games.update');
     Route::delete('/games/{game}', [GameController::class, 'destroy'])->name('games.destroy');
     
